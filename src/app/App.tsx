@@ -27,12 +27,14 @@ import { chatSupervisorScenario } from "@/app/agentConfigs/chatSupervisor";
 import { customerServiceRetailCompanyName } from "@/app/agentConfigs/customerServiceRetail";
 import { chatSupervisorCompanyName } from "@/app/agentConfigs/chatSupervisor";
 import { simpleHandoffScenario } from "@/app/agentConfigs/simpleHandoff";
+import { totemMercadoScenario } from "@/app/agentConfigs/totemMercado";
 
 // Map used by connect logic for scenarios defined via the SDK.
 const sdkScenarioMap: Record<string, RealtimeAgent[]> = {
   simpleHandoff: simpleHandoffScenario,
   customerServiceRetail: customerServiceRetailScenario,
   chatSupervisor: chatSupervisorScenario,
+  totemMercado: totemMercadoScenario,
 };
 
 import useAudioDownload from "./hooks/useAudioDownload";
@@ -63,9 +65,7 @@ function App() {
   const { logClientEvent, logServerEvent } = useEvent();
 
   const [selectedAgentName, setSelectedAgentName] = useState<string>("");
-  const [selectedAgentConfigSet, setSelectedAgentConfigSet] = useState<
-    RealtimeAgent[] | null
-  >(null);
+  const [selectedAgentConfigSet, setSelectedAgentConfigSet] = useState<RealtimeAgent[] | null>(null);
 
   const audioElementRef = useRef<HTMLAudioElement | null>(null);
   // Ref to identify whether the latest agent switch came from an automatic handoff
@@ -102,11 +102,9 @@ function App() {
     },
   });
 
-  const [sessionStatus, setSessionStatus] =
-    useState<SessionStatus>("DISCONNECTED");
+  const [sessionStatus, setSessionStatus] = useState<SessionStatus>("DISCONNECTED");
 
-  const [isEventsPaneExpanded, setIsEventsPaneExpanded] =
-    useState<boolean>(true);
+  const [isEventsPaneExpanded, setIsEventsPaneExpanded] = useState<boolean>(true);
   const [userText, setUserText] = useState<string>("");
   const [isPTTActive, setIsPTTActive] = useState<boolean>(false);
   const [isPTTUserSpeaking, setIsPTTUserSpeaking] = useState<boolean>(false);
@@ -119,8 +117,7 @@ function App() {
   );
 
   // Initialize the recording hook.
-  const { startRecording, stopRecording, downloadRecording } =
-    useAudioDownload();
+  const { startRecording, stopRecording, downloadRecording } = useAudioDownload();
 
   const sendClientEvent = (eventObj: any, eventNameSuffix = "") => {
     try {
@@ -195,7 +192,17 @@ function App() {
   };
 
   const connectToRealtime = async () => {
+    // DEBUG ADICIONADO
+    console.log('=== Connect clicked! ===');
+    console.log('Selected agent:', selectedAgentName);
+    console.log('Session status:', sessionStatus);
+    console.log('Search params agentConfig:', searchParams.get("agentConfig"));
+    
     const agentSetKey = searchParams.get("agentConfig") || "default";
+    console.log('Agent set key:', agentSetKey);
+    console.log('SDK scenario map:', sdkScenarioMap);
+    console.log('Is in SDK map?', sdkScenarioMap[agentSetKey]);
+    
     if (sdkScenarioMap[agentSetKey]) {
       if (sessionStatus !== "DISCONNECTED") return;
       setSessionStatus("CONNECTING");
@@ -231,6 +238,8 @@ function App() {
         setSessionStatus("DISCONNECTED");
       }
       return;
+    } else {
+      console.log('Agent set NOT in SDK map - connection will not proceed');
     }
   };
 
