@@ -71,6 +71,10 @@ function App() {
   // Ref to identify whether the latest agent switch came from an automatic handoff
   const handoffTriggeredRef = useRef(false);
 
+  // States for voice activity
+  const [isAgentSpeaking, setIsAgentSpeaking] = useState(false);
+  const [isUserSpeaking, setIsUserSpeaking] = useState(false);
+
   const sdkAudioElement = React.useMemo(() => {
     if (typeof window === 'undefined') return undefined;
     const el = document.createElement('audio');
@@ -123,10 +127,37 @@ function App() {
     try {
       sendEvent(eventObj);
       logClientEvent(eventObj, eventNameSuffix);
+      
+      // Update voice states based on events
+      if (eventObj.type === 'response.audio_transcript.started' || 
+          eventObj.type === 'response.audio.started') {
+        setIsAgentSpeaking(true);
+      } else if (eventObj.type === 'response.audio_transcript.done' || 
+                 eventObj.type === 'response.audio.done' ||
+                 eventObj.type === 'response.done') {
+        setIsAgentSpeaking(false);
+      } else if (eventObj.type === 'input_audio_buffer.speech_started') {
+        setIsUserSpeaking(true);
+      } else if (eventObj.type === 'input_audio_buffer.speech_stopped' ||
+                 eventObj.type === 'input_audio_buffer.committed') {
+        setIsUserSpeaking(false);
+      }
     } catch (err) {
       console.error('Failed to send via SDK', err);
     }
   };
+
+  // Send state updates to totem window
+  useEffect(() => {
+    if (window.opener) {
+      window.opener.postMessage({
+        type: 'state-update',
+        isListening: sessionStatus === 'CONNECTED' && isUserSpeaking,
+        isSpeaking: sessionStatus === 'CONNECTED' && isAgentSpeaking,
+        isConnected: sessionStatus === 'CONNECTED'
+      }, '*');
+    }
+  }, [sessionStatus, isUserSpeaking, isAgentSpeaking]);
 
   useHandleSessionHistory();
 
@@ -247,6 +278,8 @@ function App() {
     disconnect();
     setSessionStatus("DISCONNECTED");
     setIsPTTUserSpeaking(false);
+    setIsAgentSpeaking(false);
+    setIsUserSpeaking(false);
   };
 
   const sendSimulatedUserMessage = (text: string) => {

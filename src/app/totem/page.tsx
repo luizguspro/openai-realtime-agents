@@ -1,92 +1,102 @@
 'use client';
 
-import { useState } from 'react';
-import { toolImplementations } from '../toolLogic/totemTools';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import VoiceOrb from '../components/VoiceOrb';
+import Image from 'next/image';
 
 export default function TotemPage() {
-  const [status, setStatus] = useState('Clique para iniciar');
-  const [messages, setMessages] = useState<string[]>([]);
+  const router = useRouter();
+  const [isListening, setIsListening] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isConnected, setIsConnected] = useState(false);
+  const [showProducts, setShowProducts] = useState(false);
 
-  const handleClick = async () => {
-    setStatus('Sistema ativo');
-    setMessages(['Assistente: Olá! Bem-vindo ao supermercado. Como posso ajudar?']);
-  };
-
-  const testCommand = async (command: string, userMessage: string) => {
-    setMessages(prev => [...prev, `Cliente: ${userMessage}`]);
+  useEffect(() => {
+    // Redireciona para o app principal com o agente correto
+    const params = new URLSearchParams();
+    params.set('agentConfig', 'totemMercado');
     
-    if (command === 'produto') {
-      const result = await toolImplementations.buscar_produto({ nome: 'leite' });
-      setMessages(prev => [...prev, `Assistente: ${result}`]);
-    } else if (command === 'promocao') {
-      const result = await toolImplementations.listar_promocoes({});
-      setMessages(prev => [...prev, `Assistente: ${result}`]);
-    } else if (command === 'receita') {
-      const result = await toolImplementations.sugerir_receita({ 
-        ingredientes: ['arroz', 'feijão', 'óleo'] 
-      });
-      setMessages(prev => [...prev, `Assistente: ${result}`]);
-    } else if (command === 'atendente') {
-      const result = await toolImplementations.chamar_atendente({ 
-        motivo: 'Solicitado pelo cliente' 
-      });
-      setMessages(prev => [...prev, `Assistente: ${result}`]);
-    }
+    // Abre em uma janela invisível para manter a conexão
+    const appWindow = window.open(
+      `/?${params.toString()}`,
+      'realtime-app',
+      'width=1,height=1,left=-1000,top=-1000'
+    );
+
+    // Simula estados (em produção, isso viria via postMessage)
+    setTimeout(() => setIsConnected(true), 2000);
+    
+    // Cleanup
+    return () => {
+      if (appWindow) appWindow.close();
+    };
+  }, []);
+
+  // Simula conversação
+  const startConversation = () => {
+    setIsListening(true);
+    setTimeout(() => {
+      setIsListening(false);
+      setIsSpeaking(true);
+      setTimeout(() => {
+        setIsSpeaking(false);
+        setShowProducts(true);
+      }, 3000);
+    }, 2000);
   };
 
   return (
-    <div className="min-h-screen bg-blue-600 text-white p-8">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-4xl font-bold text-center mb-8">
-          Totem de Atendimento - Supermercado
-        </h1>
-        
-        <div className="bg-white/20 rounded-lg p-6 mb-8">
-          <p className="text-2xl text-center mb-4">{status}</p>
-          <button 
-            onClick={handleClick}
-            className="w-full bg-green-500 hover:bg-green-600 py-4 rounded-lg text-xl font-semibold"
-          >
-            Iniciar Atendimento
-          </button>
+    <div className="min-h-screen bg-gradient-to-br from-purple-600 via-purple-700 to-purple-900 flex flex-col items-center justify-center p-8">
+      {/* Logo Lacta */}
+      <div className="absolute top-8 left-8">
+        <h1 className="text-white text-4xl font-bold">Lacta</h1>
+        <p className="text-purple-200">Assistente Virtual</p>
+      </div>
+
+      {/* Orb Container */}
+      <div className="flex flex-col items-center">
+        <div className="mb-8">
+          <VoiceOrb 
+            isListening={isListening}
+            isSpeaking={isSpeaking}
+            isConnected={isConnected}
+          />
         </div>
 
-        <div className="grid grid-cols-2 gap-4 mb-8">
-          <button 
-            onClick={() => testCommand('produto', 'Onde fica o leite?')}
-            className="bg-white/20 hover:bg-white/30 p-4 rounded-lg"
+        {/* Start button */}
+        {isConnected && !isListening && !isSpeaking && (
+          <button
+            onClick={startConversation}
+            className="px-8 py-4 bg-white text-purple-700 rounded-full font-semibold text-xl hover:bg-purple-100 transition-all transform hover:scale-105 shadow-lg"
           >
-            Buscar Produto
+            Falar com Marina
           </button>
-          <button 
-            onClick={() => testCommand('promocao', 'Quais as promoções?')}
-            className="bg-white/20 hover:bg-white/30 p-4 rounded-lg"
-          >
-            Ver Promoções
-          </button>
-          <button 
-            onClick={() => testCommand('receita', 'Me sugira uma receita')}
-            className="bg-white/20 hover:bg-white/30 p-4 rounded-lg"
-          >
-            Sugerir Receita
-          </button>
-          <button 
-            onClick={() => testCommand('atendente', 'Preciso de ajuda')}
-            className="bg-white/20 hover:bg-white/30 p-4 rounded-lg"
-          >
-            Chamar Atendente
-          </button>
-        </div>
-
-        {messages.length > 0 && (
-          <div className="bg-white/10 rounded-lg p-6">
-            <h2 className="text-xl font-bold mb-4">Conversa:</h2>
-            {messages.map((msg, idx) => (
-              <p key={idx} className="mb-2">{msg}</p>
-            ))}
-          </div>
         )}
       </div>
+
+      {/* Products showcase */}
+      {showProducts && (
+        <div className="absolute bottom-8 left-0 right-0 px-8">
+          <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6">
+            <h3 className="text-white text-xl mb-4">Promoções de Hoje:</h3>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="bg-white/20 rounded-lg p-4 text-center">
+                <p className="text-white font-bold">Bis</p>
+                <p className="text-purple-200">3 por R$ 9,00</p>
+              </div>
+              <div className="bg-white/20 rounded-lg p-4 text-center">
+                <p className="text-white font-bold">Diamante Negro</p>
+                <p className="text-purple-200">R$ 5,90</p>
+              </div>
+              <div className="bg-white/20 rounded-lg p-4 text-center">
+                <p className="text-white font-bold">Sonho de Valsa</p>
+                <p className="text-purple-200">R$ 12,90</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
